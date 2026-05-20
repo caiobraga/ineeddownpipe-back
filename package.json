@@ -1,0 +1,27 @@
+{
+  "name": "ineeddownpipe-back",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "build": "tsc && mkdir -p dist/data && cp src/data/seed.json dist/data/",
+    "refresh": "tsx src/refresh.ts",
+    "cache:turner": "npm run build && node scripts/cache-all-turner.mjs",
+    "fix:turner-prices": "npm run build && node scripts/fix-turner-prices.mjs"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2",
+    "playwright": "^1.52.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.13.10",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  }
+}

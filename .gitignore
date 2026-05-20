@@ -1,0 +1,9 @@
+node_modules/
+dist/
+data/products.json
+data/refresh-state.json
+data/images/
+*.log
+.env
+.env.local
+.DS_Store

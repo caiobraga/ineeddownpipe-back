@@ -1,0 +1,33 @@
+# AWS CodeBuild — push Docker image to ECR and deploy to ECS (optional)
+# Required CodeBuild env vars (set in project or pipeline):
+#   AWS_ACCOUNT_ID, AWS_DEFAULT_REGION, IMAGE_REPO_NAME
+# Optional: IMAGE_TAG (defaults to CODEBUILD_RESOLVED_SOURCE_VERSION)
+
+version: 0.2
+
+env:
+  variables:
+    NODE_ENV: production
+
+phases:
+  pre_build:
+    commands:
+      - echo "Logging in to Amazon ECR..."
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      - export IMAGE_TAG="${IMAGE_TAG:-${CODEBUILD_RESOLVED_SOURCE_VERSION:-latest}}"
+      - export IMAGE_URI="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG"
+      - echo "Image URI=$IMAGE_URI"
+  build:
+    commands:
+      - echo "Building Docker image..."
+      - docker build -t $IMAGE_REPO_NAME:$IMAGE_TAG .
+      - docker tag $IMAGE_REPO_NAME:$IMAGE_TAG $IMAGE_URI
+  post_build:
+    commands:
+      - echo "Pushing image to ECR..."
+      - docker push $IMAGE_URI
+      - printf '[{"name":"ineeddownpipe-api","imageUri":"%s"}]' "$IMAGE_URI" > imagedefinitions.json
+
+artifacts:
+  files:
+    - imagedefinitions.json

@@ -1,0 +1,26 @@
+# AWS CodeBuild — compile only (no Docker). Use if you deploy Node on EC2/Beanstalk.
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 20
+  pre_build:
+    commands:
+      - npm ci
+  build:
+    commands:
+      - npm run build
+      - npm prune --omit=dev
+
+artifacts:
+  files:
+    - dist/**/*
+    - package.json
+    - package-lock.json
+    - node_modules/**/*
+  discard-paths: no
+
+cache:
+  paths:
+    - node_modules/**/*
