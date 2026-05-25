@@ -29,7 +29,7 @@ function onlyDownpipes<T extends { title: string; source?: string }>(
 }
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = Number(process.env.PORT || 3001);
 
 const corsOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(",").map((o) => o.trim())
@@ -134,6 +134,16 @@ app.post("/api/refresh", async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`API running at http://localhost:${PORT}`);
+});
+
+server.on("error", (error: NodeJS.ErrnoException) => {
+  if (error.code === "EADDRINUSE") {
+    console.error(
+      `Port ${PORT} is already in use. Set another port with PORT=${PORT + 1} npm run dev or update ineeddownpipe-back/.env.`,
+    );
+    process.exit(1);
+  }
+  throw error;
 });
