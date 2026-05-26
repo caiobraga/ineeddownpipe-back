@@ -30,6 +30,16 @@ function onlyDownpipes<T extends { title: string; source?: string }>(
 
 const app = express();
 const PORT = Number(process.env.PORT || 3001);
+const AUTO_REFRESH_ON_STARTUP = (
+  process.env.AUTO_REFRESH_ON_STARTUP ??
+  (process.env.NODE_ENV === "production" ? "if-empty" : "false")
+).toLowerCase();
+const AUTO_REFRESH_STARTUP_DELAY_MS = Number(
+  process.env.AUTO_REFRESH_STARTUP_DELAY_MS || 1500
+);
+const AUTO_REFRESH_INTERVAL_HOURS = Number(
+  process.env.AUTO_REFRESH_INTERVAL_HOURS || 0
+);
 
 const corsOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(",").map((o) => o.trim())
@@ -89,6 +99,78 @@ app.get("/api/meta", (_req, res) => {
 
 let refreshInProgress = false;
 
+async function refreshCatalog(reason: string) {
+  if (refreshInProgress) return null;
+
+  refreshInProgress = true;
+  const startedAt = Date.now();
+  console.log(`[refresh] ${reason} started`);
+
+  try {
+    const { products, results } = await runAllScrapers();
+    const cleaned = onlyDownpipes(products);
+    if (cleaned.length > 0) {
+      saveProducts(cleaned);
+      markRefreshCompleted();
+    }
+
+    console.log(
+      `[refresh] ${reason} completed with ${cleaned.length} products in ${
+        Date.now() - startedAt
+      }ms`,
+    );
+
+    return { products: cleaned, results };
+  } finally {
+    refreshInProgress = false;
+  }
+}
+
+function runBackgroundRefresh(reason: string, force = false) {
+  if (refreshInProgress) return;
+
+  if (!force) {
+    const cooldown = checkRefreshCooldown();
+    if (!cooldown.allowed) {
+      console.log(
+        `[refresh] ${reason} skipped; cooldown active until ${new Date(
+          Date.now() + (cooldown.retryAfterMs ?? 0),
+        ).toISOString()}`,
+      );
+      return;
+    }
+  }
+
+  void refreshCatalog(reason).catch((err) => {
+    console.error(
+      `[refresh] ${reason} failed:`,
+      err instanceof Error ? err.message : err,
+    );
+  });
+}
+
+function scheduleAutomaticRefreshes() {
+  const cachedCount = onlyDownpipes(loadProducts()).length;
+  const shouldRefreshOnStartup =
+    AUTO_REFRESH_ON_STARTUP === "always" ||
+    AUTO_REFRESH_ON_STARTUP === "true" ||
+    (AUTO_REFRESH_ON_STARTUP === "if-empty" && cachedCount === 0);
+
+  if (shouldRefreshOnStartup) {
+    setTimeout(
+      () => runBackgroundRefresh("startup", cachedCount === 0),
+      AUTO_REFRESH_STARTUP_DELAY_MS,
+    );
+  }
+
+  if (AUTO_REFRESH_INTERVAL_HOURS > 0) {
+    setInterval(
+      () => runBackgroundRefresh("scheduled"),
+      AUTO_REFRESH_INTERVAL_HOURS * 60 * 60 * 1000,
+    );
+  }
+}
+
 app.post("/api/refresh", async (req, res) => {
   if (!isRefreshAllowedBySecret(req)) {
     return res.status(403).json({
@@ -110,18 +192,17 @@ app.post("/api/refresh", async (req, res) => {
   if (refreshInProgress) {
     return res.status(409).json({ error: "Refresh already in progress" });
   }
-  refreshInProgress = true;
+
   try {
-    const { products, results } = await runAllScrapers();
-    if (products.length > 0) {
-      const cleaned = onlyDownpipes(products);
-      saveProducts(cleaned);
-      markRefreshCompleted();
+    const refresh = await refreshCatalog("manual");
+    if (!refresh) {
+      return res.status(409).json({ error: "Refresh already in progress" });
     }
+
     res.json({
       ok: true,
-      count: products.length,
-      results,
+      count: refresh.products.length,
+      results: refresh.results,
       catalogUpdatedAt: getCatalogUpdatedAt(),
       message: "Catalog updated",
     });
@@ -129,13 +210,12 @@ app.post("/api/refresh", async (req, res) => {
     res.status(500).json({
       error: err instanceof Error ? err.message : "Failed to refresh",
     });
-  } finally {
-    refreshInProgress = false;
   }
 });
 
 const server = app.listen(PORT, () => {
   console.log(`API running at http://localhost:${PORT}`);
+  scheduleAutomaticRefreshes();
 });
 
 server.on("error", (error: NodeJS.ErrnoException) => {
