@@ -11,7 +11,7 @@ export async function launchBrowser(): Promise<Browser> {
 }
 
 export async function newContext(browser: Browser): Promise<BrowserContext> {
-  return browser.newContext({
+  const context = await browser.newContext({
     userAgent: USER_AGENT,
     locale: "en-US",
     viewport: { width: 1280, height: 900 },
@@ -19,6 +19,33 @@ export async function newContext(browser: Browser): Promise<BrowserContext> {
       "Accept-Language": "en-US,en;q=0.9",
     },
   });
+
+  await context.addInitScript(() => {
+    Object.defineProperty(globalThis, "__name", {
+      value: (fn: unknown) => fn,
+      configurable: true,
+    });
+  });
+
+  return context;
+}
+
+export async function evaluateBrowserFunction<Arg, Result>(
+  page: Page,
+  fn: (arg: Arg) => Result,
+  arg: Arg
+): Promise<Result> {
+  const argExpression = JSON.stringify(arg) ?? "undefined";
+  const expression = `(() => {
+    Object.defineProperty(globalThis, "__name", {
+      value: (fn) => fn,
+      configurable: true
+    });
+    const browserFn = (0, eval)(${JSON.stringify(`(${fn.toString()})`)});
+    return browserFn(${argExpression});
+  })()`;
+
+  return page.evaluate(expression) as Promise<Result>;
 }
 
 /** Wait out Cloudflare interstitial when possible */

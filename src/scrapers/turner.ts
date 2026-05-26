@@ -2,7 +2,7 @@ import type { Page } from "playwright";
 import type { Product } from "../types.js";
 import { buildProduct, parseUsdPrice } from "./helpers.js";
 import { normalizeImageUrl } from "./image-url.js";
-import { waitPastChallenge } from "./browser.js";
+import { evaluateBrowserFunction, waitPastChallenge } from "./browser.js";
 import { delay } from "../scrape-delay.js";
 import {
   isTurnerPlaceholderImage,
@@ -64,7 +64,7 @@ async function fetchTurnerProductPage(
     await waitPastChallenge(page, 12000);
     await page.waitForTimeout(800);
 
-    return page.evaluate(readTurnerPdpInBrowser, TURNER_MIN_PRICE);
+    return evaluateBrowserFunction(page, readTurnerPdpInBrowser, TURNER_MIN_PRICE);
   } catch {
     return null;
   }
@@ -124,7 +124,11 @@ export async function scrapeTurner(page: Page): Promise<Product[]> {
       });
       await page.waitForTimeout(1500);
 
-      const items = await page.evaluate(scrapeTurnerListInBrowser, TURNER_MIN_PRICE);
+      const items = await evaluateBrowserFunction(
+        page,
+        scrapeTurnerListInBrowser,
+        TURNER_MIN_PRICE
+      );
 
       for (const item of items) {
         if (seen.has(item.href)) continue;
