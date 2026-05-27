@@ -114,6 +114,15 @@ async function refreshCatalog(reason: string) {
       markRefreshCompleted();
     }
 
+    console.log(`[refresh] ${reason} scrape results:`);
+    for (const r of results) {
+      if (r.error) {
+        console.log(`  - ${r.source}: ${r.count} items (error: ${r.error})`);
+      } else {
+        console.log(`  - ${r.source}: ${r.count} items`);
+      }
+    }
+
     console.log(
       `[refresh] ${reason} completed with ${cleaned.length} products in ${
         Date.now() - startedAt
