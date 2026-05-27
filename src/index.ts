@@ -18,8 +18,6 @@ import {
   isRefreshAllowedBySecret,
   markRefreshCompleted,
 } from "./refresh-policy.js";
-import { handleImageProxy } from "./image-proxy.js";
-import { TURNER_IMAGES_DIR } from "./turner-image-cache.js";
 import seedProducts from "./data/seed.json" with { type: "json" };
 
 function onlyDownpipes<T extends { title: string; source?: string }>(
@@ -47,7 +45,6 @@ const corsOrigins = process.env.CORS_ORIGIN
 
 app.use(cors({ origin: corsOrigins }));
 app.use(express.json());
-app.use("/api/product-images", express.static(TURNER_IMAGES_DIR));
 
 function getProductsList() {
   const cached = onlyDownpipes(loadProducts());
@@ -57,10 +54,6 @@ function getProductsList() {
 
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true });
-});
-
-app.get("/api/image-proxy", (req, res) => {
-  void handleImageProxy(req, res);
 });
 
 app.get("/api/products", (req, res) => {

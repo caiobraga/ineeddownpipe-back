@@ -1,7 +1,6 @@
 export type ProductSource =
   | "amazon"
   | "bimmerworld"
-  | "turner"
   | "ind"
   | "arm";
 

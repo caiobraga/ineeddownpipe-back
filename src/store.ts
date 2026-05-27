@@ -3,14 +3,11 @@ import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import type { Product, ProductFilters } from "./types.js";
 import { normalizeImageUrl } from "./scrapers/image-url.js";
-import { isTurnerPlaceholderImage } from "./scrapers/turner-images.js";
-import { getLocalTurnerImagePath } from "./turner-image-cache.js";
 import { withAmazonAffiliateTag } from "./amazon-affiliate.js";
 
 const BASE_URLS: Partial<Record<Product["source"], string>> = {
   bimmerworld: "https://www.bimmerworld.com",
   amazon: "https://www.amazon.com",
-  turner: "https://www.turnermotorsport.com",
   ind: "https://ind-distribution.com",
   arm: "https://armmotorsports.com",
 };
@@ -18,18 +15,6 @@ const BASE_URLS: Partial<Record<Product["source"], string>> = {
 export function normalizeProduct(p: Product): Product {
   const base = BASE_URLS[p.source];
   let imageUrl = normalizeImageUrl(p.imageUrl, base) ?? null;
-
-  if (p.source === "turner") {
-    const local = getLocalTurnerImagePath(p.id);
-    if (local) {
-      imageUrl = local;
-    } else if (
-      isTurnerPlaceholderImage(imageUrl) ||
-      imageUrl?.includes("assets.turnermotorsport.com")
-    ) {
-      imageUrl = null;
-    }
-  }
 
   const url =
     p.source === "amazon" ? withAmazonAffiliateTag(p.url) : p.url;

@@ -3,7 +3,6 @@ import { scrapeAmazon } from "./amazon.js";
 import { scrapeArm } from "./arm.js";
 import { scrapeBimmerWorld } from "./bimmerworld.js";
 import { scrapeInd } from "./ind.js";
-import { scrapeTurner } from "./turner.js";
 import { launchBrowser, newContext } from "./browser.js";
 import { passesDownpipeFilter } from "./utils.js";
 import { loadProducts, saveProducts } from "../store.js";
@@ -47,7 +46,6 @@ const SCRAPERS: ScraperJob[] = [
   { source: "bimmerworld", needsBrowser: false, run: scrapeBimmerWorld },
   { source: "ind", needsBrowser: false, run: scrapeInd },
   { source: "arm", needsBrowser: false, run: scrapeArm },
-  { source: "turner", needsBrowser: true, run: scrapeTurner },
   { source: "amazon", needsBrowser: true, run: scrapeAmazon },
 ];
 

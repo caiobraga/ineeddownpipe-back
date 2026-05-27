@@ -5,10 +5,15 @@ import { buildProduct } from "./helpers.js";
 import { delay } from "../scrape-delay.js";
 
 /** Primary search: https://www.amazon.com/s?k=downpipe+bmw */
+const DEFAULT_PAGES_PER_QUERY = Number(process.env.AMAZON_PAGES_PER_QUERY || 5);
+const MAX_PAGES_PER_QUERY = Math.max(1, Math.min(10, DEFAULT_PAGES_PER_QUERY));
+
 const SEARCH_QUERIES = [
-  { q: "downpipe bmw", pages: 3 },
-  { q: "BMW catless downpipe", pages: 2 },
-  { q: "BMW N55 downpipe turbo", pages: 2 },
+  { q: "downpipe bmw", pages: MAX_PAGES_PER_QUERY },
+  { q: "BMW catless downpipe", pages: MAX_PAGES_PER_QUERY },
+  { q: "BMW N55 downpipe turbo", pages: MAX_PAGES_PER_QUERY },
+  { q: "BMW B58 downpipe", pages: Math.max(2, Math.min(10, MAX_PAGES_PER_QUERY)) },
+  { q: "BMW S55 downpipe", pages: Math.max(2, Math.min(10, MAX_PAGES_PER_QUERY)) },
 ];
 
 const DELAY_BETWEEN_QUERIES_MS = 2500;
@@ -28,7 +33,10 @@ async function isAmazonBlocked(page: Page): Promise<boolean> {
     return (
       text.includes("robot check") ||
       text.includes("type the characters you see") ||
-      document.title.toLowerCase().includes("sorry")
+      text.includes("enter the characters you see") ||
+      text.includes("to discuss automated access") ||
+      document.title.toLowerCase().includes("sorry") ||
+      Boolean(document.querySelector('input#captchacharacters, form[action*="validateCaptcha"], img[src*="captcha"]'))
     );
   });
 }
@@ -114,8 +122,11 @@ async function goToNextResultsPage(page: Page): Promise<boolean> {
     "a.s-pagination-next:not(.s-pagination-disabled), .s-pagination-next:not(.s-pagination-disabled) a"
   );
   if ((await next.count()) === 0) return false;
-  await next.first().click();
-  await page.waitForTimeout(2500);
+  const href = await next.first().getAttribute("href").catch(() => null);
+  if (!href) return false;
+  const nextUrl = href.startsWith("http") ? href : `https://www.amazon.com${href}`;
+  await page.goto(nextUrl, { waitUntil: "domcontentloaded", timeout: 60000 });
+  await page.waitForTimeout(1200);
   return true;
 }
 
@@ -139,16 +150,17 @@ export async function scrapeAmazon(page: Page): Promise<Product[]> {
         .catch(() => {});
 
       if (await isAmazonBlocked(page)) {
-        console.error(`[amazon] blocked on query "${query}"`);
-        continue;
+        throw new Error(`blocked by bot protection on query "${query}"`);
       }
     } catch {
-      continue;
+      throw new Error(`amazon navigation failed or blocked on query "${query}"`);
     }
 
     for (let pageNum = 1; pageNum <= maxPages; pageNum++) {
       if (pageNum > 1 && !(await goToNextResultsPage(page))) break;
-      if (await isAmazonBlocked(page)) break;
+      if (await isAmazonBlocked(page)) {
+        throw new Error(`blocked by bot protection on query "${query}" page ${pageNum}`);
+      }
 
       await scrollResults(page);
 
@@ -156,7 +168,7 @@ export async function scrapeAmazon(page: Page): Promise<Product[]> {
       try {
         items = await extractSearchResults(page);
       } catch {
-        break;
+        throw new Error(`failed to parse search results for query "${query}" page ${pageNum}`);
       }
 
       for (const item of items) {
