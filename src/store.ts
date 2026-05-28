@@ -10,6 +10,8 @@ const BASE_URLS: Partial<Record<Product["source"], string>> = {
   amazon: "https://www.amazon.com",
   ind: "https://ind-distribution.com",
   arm: "https://armmotorsports.com",
+  novaracing: "https://www.novaracing.com.br",
+  turbobrothers: "https://www.turbobrothers.com.br",
 };
 
 export function normalizeProduct(p: Product): Product {
@@ -34,7 +36,14 @@ function ensureDataDir() {
   if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
 }
 
-const REMOVED_SOURCES = new Set(["turner"]);
+const REMOVED_SOURCES = new Set([
+  "turner",
+  "maperformance",
+  "activeautowerke",
+  "vrsf",
+  "erw",
+  "r44performance",
+]);
 
 function withoutRemovedSources(products: Product[]): Product[] {
   return products.filter((p) => !REMOVED_SOURCES.has(String(p.source)));

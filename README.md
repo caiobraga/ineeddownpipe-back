@@ -1,6 +1,6 @@
 # ineeddownpipe-back
 
-BMW downpipe price comparison API. Scrapes Dinan Cars and Amazon, exposes REST endpoints, and caches results.
+BMW downpipe price comparison API. Scrapes multiple retailers and Amazon, exposes REST endpoints, and caches results.
 
 **Standalone GitHub repository** — deploy with its own AWS CodeBuild pipeline (ECS + ECR recommended).
 

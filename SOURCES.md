@@ -1,23 +1,21 @@
-# BMW downpipe sources (US market)
+# BMW downpipe sources (US + Brazil)
 
 Research summary for **iNeedDownpipe** — ranked for catalog quality and scrape reliability.
 
 | Priority | Retailer | Why | Scrape method |
 |----------|----------|-----|----------------|
 | 1 | [BimmerWorld](https://www.bimmerworld.com/Exhaust/Downpipes/) | Dedicated downpipe category, BMW-focused, real fitment titles | HTTP fetch (reliable) |
-| 2 | [IND Distribution](https://ind-distribution.com/) | High-end BMW aftermarket; Shopify `.js` API | HTTP fetch (works) |
+| 2 | [IND Distribution](https://ind-distribution.com/) | High-end BMW aftermarket; Shopify suggest API | HTTP fetch (works) |
 | 2b | [ARM Motorsports](https://armmotorsports.com/) | Popular downpipe brand; Shopify | HTTP fetch (works) |
-| — | [ECS Tuning](https://www.ecstuning.com/) | Blocked by Cloudflare in headless scrape | Not integrated |
-| — | Turner Motorsport | Removed — bot protection blocks reliable scraping | Not integrated |
-| 3 | [FCP Euro](https://www.fcpeuro.com/) | OEM + aftermarket BMW parts, good search | Playwright (not integrated) |
-| 4 | [Amazon](https://www.amazon.com/) | Broad marketplace; noisy listings — strict title filter required | Playwright |
-| 5 | [Dinan Cars](https://www.dinancars.com/) | OEM-adjacent; few products named “downpipe” | Playwright (Cloudflare, not integrated) |
+| 3 | [Amazon](https://www.amazon.com/) | Broad marketplace; noisy listings — strict title filter required | Playwright |
+| 4 | [Nova Racing](https://www.novaracing.com.br/downpipes) | Brazilian BMW downpipes (BRL); Loja Integrada | HTTP fetch |
+| 4b | [Turbo Brothers](https://www.turbobrothers.com.br/downpipe) | Brazilian BMW downpipes (BRL); Loja Integrada | HTTP fetch |
 
-### Not included (yet)
+### Skipped (Cloudflare challenge / bot block)
 
-- **MAPerformance / Vivid Racing** — heavy bot protection
-- **eBay** — API/partner program needed for stable access
-- **Turn14 / distribution** — B2B, not consumer listings
+These US retailers sit behind Cloudflare or similar bot protection that blocks reliable server-side scraping from AWS/ECS:
+
+- ECS Tuning, FCP Euro, Dinan Cars, Turner Motorsport, MAPerformance, Active Autowerke, VRSF, Evolution Racewerks, R44 Performance, Vivid Racing, CTS Turbo
 
 ### Product filter
 

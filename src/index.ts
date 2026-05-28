@@ -10,7 +10,7 @@ import {
   saveProducts,
 } from "./store.js";
 import type { ProductFilters, ProductSource } from "./types.js";
-import { runAllScrapers } from "./scrapers/index.js";
+import { runAllScrapers, SCRAPER_SOURCES } from "./scrapers/index.js";
 import { passesDownpipeFilter } from "./scrapers/utils.js";
 import {
   checkRefreshCooldown,
@@ -151,16 +151,28 @@ function runBackgroundRefresh(reason: string, force = false) {
   });
 }
 
+function catalogMissingSources(products: ReturnType<typeof loadProducts>): boolean {
+  const present = new Set(products.map((p) => p.source));
+  return SCRAPER_SOURCES.some((source) => !present.has(source));
+}
+
 function scheduleAutomaticRefreshes() {
-  const cachedCount = onlyDownpipes(loadProducts()).length;
+  const cached = onlyDownpipes(loadProducts());
+  const cachedCount = cached.length;
+  const missingSources = catalogMissingSources(cached);
   const shouldRefreshOnStartup =
     AUTO_REFRESH_ON_STARTUP === "always" ||
     AUTO_REFRESH_ON_STARTUP === "true" ||
-    (AUTO_REFRESH_ON_STARTUP === "if-empty" && cachedCount === 0);
+    (AUTO_REFRESH_ON_STARTUP === "if-empty" && cachedCount === 0) ||
+    missingSources;
 
   if (shouldRefreshOnStartup) {
     setTimeout(
-      () => runBackgroundRefresh("startup", cachedCount === 0),
+      () =>
+        runBackgroundRefresh(
+          missingSources ? "startup-missing-sources" : "startup",
+          cachedCount === 0 || missingSources,
+        ),
       AUTO_REFRESH_STARTUP_DELAY_MS,
     );
   }

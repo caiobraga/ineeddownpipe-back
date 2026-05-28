@@ -1,6 +1,7 @@
 /** Titles that are accessories or other exhaust parts, not downpipes. */
 const HARD_EXCLUDE: RegExp[] = [
   /\bv[\s-]?band\s+clamp\b/i,
+  /\bdownpipe\s+clamp\b/i,
   /\bclamp\b.*\bfor\b.*\bdownpipe\b/i,
   /\bquick\s+release\b.*\bclamp\b/i,
   /\bgasket\b/i,

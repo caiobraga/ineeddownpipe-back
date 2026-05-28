@@ -2,7 +2,9 @@ export type ProductSource =
   | "amazon"
   | "bimmerworld"
   | "ind"
-  | "arm";
+  | "arm"
+  | "novaracing"
+  | "turbobrothers";
 
 export interface Product {
   id: string;

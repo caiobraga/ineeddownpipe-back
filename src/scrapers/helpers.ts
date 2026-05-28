@@ -18,6 +18,7 @@ export function inferBrandFromTitle(title: string): string {
   const brands = [
     "Evolution Racewerks",
     "Wagner Performance",
+    "Wagner Tuning",
     "Akrapovic",
     "Eisenmann",
     "Supersprint",
@@ -29,6 +30,9 @@ export function inferBrandFromTitle(title: string): string {
     "Masata",
     "Genuine BMW",
     "Dinan",
+    "Armytrix",
+    "Nova Racing",
+    "Turbo Brothers",
   ];
   for (const b of brands) {
     if (title.toLowerCase().includes(b.toLowerCase())) return b;
@@ -51,6 +55,7 @@ export function buildProduct(input: {
   title: string;
   url: string;
   price: number | null;
+  currency?: string;
   imageUrl?: string | null;
   model?: string;
   brand?: string;
@@ -64,7 +69,7 @@ export function buildProduct(input: {
     title: input.title.trim(),
     brand: input.brand ?? inferBrandFromTitle(input.title),
     price: input.price,
-    currency: "USD",
+    currency: input.currency ?? "USD",
     imageUrl: input.imageUrl ?? null,
     url: input.url,
     source: input.source,
