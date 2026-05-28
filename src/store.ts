@@ -34,12 +34,18 @@ function ensureDataDir() {
   if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
 }
 
+const REMOVED_SOURCES = new Set(["turner"]);
+
+function withoutRemovedSources(products: Product[]): Product[] {
+  return products.filter((p) => !REMOVED_SOURCES.has(String(p.source)));
+}
+
 export function loadProducts(): Product[] {
   ensureDataDir();
   if (!existsSync(CACHE_FILE)) return [];
   try {
     const raw = readFileSync(CACHE_FILE, "utf-8");
-    return normalizeAll(JSON.parse(raw) as Product[]);
+    return normalizeAll(withoutRemovedSources(JSON.parse(raw) as Product[]));
   } catch {
     return [];
   }

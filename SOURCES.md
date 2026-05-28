@@ -8,10 +8,10 @@ Research summary for **iNeedDownpipe** — ranked for catalog quality and scrape
 | 2 | [IND Distribution](https://ind-distribution.com/) | High-end BMW aftermarket; Shopify `.js` API | HTTP fetch (works) |
 | 2b | [ARM Motorsports](https://armmotorsports.com/) | Popular downpipe brand; Shopify | HTTP fetch (works) |
 | — | [ECS Tuning](https://www.ecstuning.com/) | Blocked by Cloudflare in headless scrape | Not integrated |
-| 3 | [Turner Motorsport](https://www.turnermotorsport.com/c-807-bmw-downpipes) | Strong BMW performance brand, downpipe category | Playwright (Cloudflare) |
-| 4 | [FCP Euro](https://www.fcpeuro.com/) | OEM + aftermarket BMW parts, good search | Playwright |
-| 5 | [Amazon](https://www.amazon.com/) | Broad marketplace; noisy listings — strict title filter required | Playwright |
-| 6 | [Dinan Cars](https://www.dinancars.com/) | OEM-adjacent; few products named “downpipe” | Playwright (Cloudflare) |
+| — | Turner Motorsport | Removed — bot protection blocks reliable scraping | Not integrated |
+| 3 | [FCP Euro](https://www.fcpeuro.com/) | OEM + aftermarket BMW parts, good search | Playwright (not integrated) |
+| 4 | [Amazon](https://www.amazon.com/) | Broad marketplace; noisy listings — strict title filter required | Playwright |
+| 5 | [Dinan Cars](https://www.dinancars.com/) | OEM-adjacent; few products named “downpipe” | Playwright (Cloudflare, not integrated) |
 
 ### Not included (yet)
 

@@ -7,9 +7,7 @@
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
     "build": "tsc && mkdir -p dist/data && cp src/data/seed.json dist/data/",
-    "refresh": "tsx src/refresh.ts",
-    "cache:turner": "npm run build && node scripts/cache-all-turner.mjs",
-    "fix:turner-prices": "npm run build && node scripts/fix-turner-prices.mjs"
+    "refresh": "tsx src/refresh.ts"
   },
   "dependencies": {
     "cors": "^2.8.5",
