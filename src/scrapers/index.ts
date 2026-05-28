@@ -50,7 +50,10 @@ const SCRAPERS: ScraperJob[] = [
   { source: "arm", needsBrowser: false, run: scrapeArm },
   { source: "novaracing", needsBrowser: false, run: scrapeNovaRacing },
   { source: "turbobrothers", needsBrowser: false, run: scrapeTurboBrothers },
-  { source: "amazon", needsBrowser: true, run: scrapeAmazon },
+  ...(process.env.SKIP_AMAZON_SCRAPE === "true" ||
+  process.env.SKIP_AMAZON_SCRAPE === "1"
+    ? []
+    : [{ source: "amazon" as const, needsBrowser: true as const, run: scrapeAmazon }]),
 ];
 
 export const SCRAPER_SOURCES: ProductSource[] = SCRAPERS.map((job) => job.source);
@@ -81,6 +84,9 @@ export async function runAllScrapers(): Promise<{
 
   let browser;
   try {
+    if (browserScrapers.length === 0) {
+      // Amazon scrape skipped via SKIP_AMAZON_SCRAPE
+    } else {
     browser = await launchBrowser();
     const context = await newContext(browser);
     for (const job of browserScrapers) {
@@ -103,6 +109,7 @@ export async function runAllScrapers(): Promise<{
     }
 
     await context.close();
+    }
   } catch (err) {
     results.push({
       source: "amazon",

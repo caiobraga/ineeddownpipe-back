@@ -6,7 +6,12 @@ const USER_AGENT =
 export async function launchBrowser(): Promise<Browser> {
   return chromium.launch({
     headless: true,
-    args: ["--disable-blink-features=AutomationControlled"],
+    args: [
+      "--disable-blink-features=AutomationControlled",
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+    ],
   });
 }
 
@@ -14,6 +19,7 @@ export async function newContext(browser: Browser): Promise<BrowserContext> {
   const context = await browser.newContext({
     userAgent: USER_AGENT,
     locale: "en-US",
+    timezoneId: "America/New_York",
     viewport: { width: 1280, height: 900 },
     extraHTTPHeaders: {
       "Accept-Language": "en-US,en;q=0.9",
@@ -24,6 +30,9 @@ export async function newContext(browser: Browser): Promise<BrowserContext> {
     Object.defineProperty(globalThis, "__name", {
       value: (fn: unknown) => fn,
       configurable: true,
+    });
+    Object.defineProperty(navigator, "webdriver", {
+      get: () => undefined,
     });
   });
 

@@ -7,7 +7,7 @@ Research summary for **iNeedDownpipe** — ranked for catalog quality and scrape
 | 1 | [BimmerWorld](https://www.bimmerworld.com/Exhaust/Downpipes/) | Dedicated downpipe category, BMW-focused, real fitment titles | HTTP fetch (reliable) |
 | 2 | [IND Distribution](https://ind-distribution.com/) | High-end BMW aftermarket; Shopify suggest API | HTTP fetch (works) |
 | 2b | [ARM Motorsports](https://armmotorsports.com/) | Popular downpipe brand; Shopify | HTTP fetch (works) |
-| 3 | [Amazon](https://www.amazon.com/) | Broad marketplace; noisy listings — strict title filter required | Playwright |
+| 3 | [Amazon](https://www.amazon.com/) | Broad marketplace; often blocks datacenter IPs (AWS/ECS) — keeps prior cache on failure | Playwright |
 | 4 | [Nova Racing](https://www.novaracing.com.br/downpipes) | Brazilian BMW downpipes (BRL); Loja Integrada | HTTP fetch |
 | 4b | [Turbo Brothers](https://www.turbobrothers.com.br/downpipe) | Brazilian BMW downpipes (BRL); Loja Integrada | HTTP fetch |
 
