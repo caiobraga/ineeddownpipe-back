@@ -4,6 +4,12 @@ import { fileURLToPath } from "url";
 import type { Product, ProductFilters } from "./types.js";
 import { normalizeImageUrl } from "./scrapers/image-url.js";
 import { withAmazonAffiliateTag } from "./amazon-affiliate.js";
+import {
+  enrichProductFitment,
+  getFitmentMeta,
+  matchesVehiclePreset,
+} from "./fitment.js";
+import type { ChassisTag, EngineTag } from "./fitment.js";
 
 const BASE_URLS: Partial<Record<Product["source"], string>> = {
   bimmerworld: "https://www.bimmerworld.com",
@@ -21,7 +27,7 @@ export function normalizeProduct(p: Product): Product {
   const url =
     p.source === "amazon" ? withAmazonAffiliateTag(p.url) : p.url;
 
-  return { ...p, imageUrl, url };
+  return enrichProductFitment({ ...p, imageUrl, url });
 }
 
 function normalizeAll(products: Product[]): Product[] {
@@ -71,10 +77,15 @@ export function saveProducts(products: Product[]) {
 
 function matchesSearch(product: Product, search: string): boolean {
   const q = search.toLowerCase();
+  const fitment = [
+    ...(product.fitmentChassis ?? []),
+    ...(product.fitmentEngines ?? []),
+  ].join(" ");
   return (
     product.title.toLowerCase().includes(q) ||
     product.brand.toLowerCase().includes(q) ||
     product.model.toLowerCase().includes(q) ||
+    fitment.toLowerCase().includes(q) ||
     (product.partNumber?.toLowerCase().includes(q) ?? false)
   );
 }
@@ -100,6 +111,28 @@ export function filterProducts(
     result = result.filter(
       (p) => p.brand.toLowerCase() === filters.brand!.toLowerCase()
     );
+  }
+  if (filters.vehicle) {
+    result = result.filter((p) => matchesVehiclePreset(p, filters.vehicle!));
+  }
+  if (filters.chassis) {
+    const c = filters.chassis.toLowerCase() as ChassisTag;
+    result = result.filter(
+      (p) =>
+        p.fitmentChassis?.includes(c) ||
+        `${p.title} ${p.model}`.toLowerCase().includes(c)
+    );
+  }
+  if (filters.engine) {
+    const e = filters.engine.toLowerCase() as EngineTag;
+    result = result.filter(
+      (p) =>
+        p.fitmentEngines?.includes(e) ||
+        `${p.title} ${p.model}`.toLowerCase().includes(e)
+    );
+  }
+  if (filters.multiModel) {
+    result = result.filter((p) => p.multiModelFit === true);
   }
   if (filters.minPrice != null) {
     result = result.filter(
@@ -146,6 +179,7 @@ export function getFilterMeta(products: Product[]) {
     models,
     brands,
     sources,
+    ...getFitmentMeta(products),
     priceRange: {
       min: prices.length ? Math.min(...prices) : 0,
       max: prices.length ? Math.max(...prices) : 0,

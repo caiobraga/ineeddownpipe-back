@@ -63,6 +63,11 @@ app.get("/api/products", (req, res) => {
     source: req.query.source as ProductSource | undefined,
     model: req.query.model as string | undefined,
     brand: req.query.brand as string | undefined,
+    chassis: req.query.chassis as string | undefined,
+    engine: req.query.engine as string | undefined,
+    vehicle: req.query.vehicle as string | undefined,
+    multiModel:
+      req.query.multiModel === "true" || req.query.multiModel === "1",
     minPrice: req.query.minPrice
       ? Number(req.query.minPrice)
       : undefined,

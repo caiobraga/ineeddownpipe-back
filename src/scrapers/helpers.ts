@@ -5,7 +5,8 @@ export function inferBmwModel(title: string): string {
   const lower = title.toLowerCase();
   if (/g8[027x]|f8[0-9x]|s58|g87 m2/i.test(lower)) return "M2/M3/M4 (G8x / S58)";
   if (/f8[0-9] m[234]|s55|f80|f82|f87/i.test(lower)) return "M2/M3/M4 (F8x / S55)";
-  if (/m340|m440|b58tu|b58a|b58/i.test(lower)) return "M340i/M440i (B58)";
+  if (/m340|m440|b58tu|b58a|b58|g30.*b58|g20.*340/i.test(lower))
+    return "M340i/M440i (B58)";
   if (/n55|335|435|m135|m235|m2 n55/i.test(lower)) return "N55 / F-chassis";
   if (/n20|n26|228|328|428|320i|330i|430i/i.test(lower)) return "N20/N26 / F-chassis";
   if (/b46|b48|g20|g22|230i|330i xdrive/i.test(lower)) return "G20/G22 (B46/B48)";
