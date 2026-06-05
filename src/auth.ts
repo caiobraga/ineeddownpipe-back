@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { randomBytes } from "crypto";
-import { getSupabaseAdmin } from "./supabase.js";
+import { getSupabaseAdmin, isSupabaseConfigured } from "./supabase.js";
 import {
   passwordResetEmailHtml,
   sendEmail,
@@ -33,7 +33,40 @@ type UserRow = {
 const TOKEN_EXPIRY = "7d";
 
 export function isAuthConfigured(): boolean {
-  return Boolean(process.env.JWT_SECRET);
+  return isSupabaseConfigured() && Boolean(process.env.JWT_SECRET);
+}
+
+export function authConfigStatus() {
+  return {
+    supabase: isSupabaseConfigured(),
+    jwt: Boolean(process.env.JWT_SECRET),
+    resend: Boolean(process.env.RESEND_API_KEY),
+  };
+}
+
+export function mapAuthError(message: string): { status: number; error: string } {
+  if (message === "Supabase is not configured") {
+    return {
+      status: 503,
+      error: "Sign-up is unavailable — server database is not configured",
+    };
+  }
+  if (
+    message.includes("app_users") &&
+    (message.includes("does not exist") || message.includes("schema cache"))
+  ) {
+    return {
+      status: 503,
+      error: "Sign-up is unavailable — run supabase/app_users.sql in Supabase",
+    };
+  }
+  if (message === "User already exists") {
+    return { status: 409, error: message };
+  }
+  if (message === "Invalid credentials") {
+    return { status: 401, error: message };
+  }
+  return { status: 400, error: message };
 }
 
 function jwtSecret(): string {

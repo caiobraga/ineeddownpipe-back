@@ -22,9 +22,11 @@ import {
 import seedProducts from "./data/seed.json" with { type: "json" };
 import { isSupabaseConfigured } from "./supabase.js";
 import {
+  authConfigStatus,
   confirmPasswordReset,
   isAuthConfigured,
   loginUser,
+  mapAuthError,
   registerUser,
   requestPasswordReset,
   requireAuthUser,
@@ -149,6 +151,7 @@ app.get("/api/health", (_req, res) => {
     ok: true,
     listings: isListingsConfigured(),
     auth: isAuthConfigured(),
+    authConfig: authConfigStatus(),
   });
 });
 
@@ -171,8 +174,8 @@ app.post("/api/auth/register", async (req, res) => {
     res.status(201).json(result);
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Registration failed";
-    const status = msg === "User already exists" ? 409 : 400;
-    res.status(status).json({ error: msg });
+    const mapped = mapAuthError(msg);
+    res.status(mapped.status).json({ error: mapped.error });
   }
 });
 
@@ -192,7 +195,8 @@ app.post("/api/auth/login", async (req, res) => {
     res.json(result);
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Login failed";
-    res.status(msg === "Invalid credentials" ? 401 : 400).json({ error: msg });
+    const mapped = mapAuthError(msg);
+    res.status(mapped.status).json({ error: mapped.error });
   }
 });
 
