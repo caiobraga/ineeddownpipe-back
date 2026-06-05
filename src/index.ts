@@ -3,6 +3,7 @@ import express from "express";
 import cors from "cors";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
+import type { Request } from "express";
 import {
   filterProducts,
   getFilterMeta,
@@ -19,6 +20,16 @@ import {
   markRefreshCompleted,
 } from "./refresh-policy.js";
 import seedProducts from "./data/seed.json" with { type: "json" };
+import { requireSupabaseUser } from "./supabase.js";
+import { stripe, stripeWebhookSecret, usedListingFeeCents, siteUrl } from "./stripe.js";
+import {
+  CreateUsedListingSchema,
+  createDraftUsedListing,
+  ensurePaymentRow,
+  getUsedListingById,
+  listPublishedUsedListings,
+  markListingPaidAndPublish,
+} from "./used-listings.js";
 
 function onlyDownpipes<T extends { title: string; source?: string }>(
   items: T[]
@@ -44,7 +55,65 @@ const corsOrigins = process.env.CORS_ORIGIN
   : true;
 
 app.use(cors({ origin: corsOrigins }));
+
+// Stripe webhook needs the raw body. Keep this route BEFORE express.json().
+app.post(
+  "/api/stripe/webhook",
+  express.raw({ type: "application/json" }),
+  async (req, res) => {
+    const sig = req.headers["stripe-signature"];
+    if (typeof sig !== "string") {
+      return res.status(400).send("Missing Stripe-Signature");
+    }
+
+    let event;
+    try {
+      event = stripe.webhooks.constructEvent(
+        req.body,
+        sig,
+        stripeWebhookSecret()
+      );
+    } catch (err) {
+      return res.status(400).send(
+        err instanceof Error ? err.message : "Invalid signature"
+      );
+    }
+
+    try {
+      if (event.type === "checkout.session.completed") {
+        const session = event.data.object as {
+          id: string;
+          payment_intent?: string | null;
+          payment_intent_id?: string | null;
+        };
+        await markListingPaidAndPublish({
+          sessionId: session.id,
+          paymentIntentId:
+            (session.payment_intent as string | null | undefined) ??
+            (session.payment_intent_id as string | null | undefined) ??
+            null,
+        });
+      }
+    } catch (err) {
+      console.error(
+        "[stripe webhook] error:",
+        err instanceof Error ? err.message : err
+      );
+      return res.status(500).send("Webhook handler failed");
+    }
+
+    return res.json({ received: true });
+  }
+);
+
 app.use(express.json());
+
+async function requireAuth(req: Request) {
+  const auth = req.headers.authorization;
+  if (!auth?.startsWith("Bearer ")) throw new Error("Unauthorized");
+  const token = auth.slice("Bearer ".length).trim();
+  return await requireSupabaseUser(token);
+}
 
 function getProductsList() {
   const cached = onlyDownpipes(loadProducts());
@@ -77,13 +146,53 @@ app.get("/api/products", (req, res) => {
     sort: (req.query.sort as ProductFilters["sort"]) || "price-asc",
   };
 
-  const filtered = filterProducts(products, filters);
-  const meta = {
-    ...getFilterMeta(products),
-    catalogUpdatedAt: getCatalogUpdatedAt(),
-  };
+  // Used listings live in Supabase; fetch and merge (best effort).
+  void (async () => {
+    let used: any[] = [];
+    try {
+      used = await listPublishedUsedListings(200);
+    } catch {
+      used = [];
+    }
 
-  res.json({ products: filtered, meta, count: filtered.length });
+    const usedAsProducts = used.map((u) => ({
+      id: `used-${u.id}`,
+      title: u.title,
+      brand: "Private seller",
+      price: u.price_cents != null ? Number(u.price_cents) / 100 : null,
+      currency: u.currency || "USD",
+      imageUrl: (u.images?.[0] as string | undefined) ?? null,
+      url: `${siteUrl()}/sell?listing=${u.id}`,
+      source: "used",
+      model:
+        (u.engine?.length ? `${u.engine.join("/")}` : "BMW") +
+        " (used listing)",
+      partNumber: null,
+      inStock: true,
+      scrapedAt: u.published_at || u.created_at || new Date().toISOString(),
+      fitmentChassis: (u.chassis ?? []).map((c: string) => c.toLowerCase()),
+      fitmentEngines: (u.engine ?? []).map((e: string) => e.toLowerCase()),
+      multiModelFit: (u.chassis?.length ?? 0) > 1,
+      usedListing: {
+        id: u.id,
+        status: u.status,
+        condition: u.condition,
+        location: u.location,
+        contactEmail: u.contact_email,
+        notes: u.notes,
+        images: u.images ?? [],
+      },
+    }));
+
+    const allProducts = [...products, ...usedAsProducts];
+    const filtered = filterProducts(allProducts as any, filters);
+    const meta = {
+      ...getFilterMeta(allProducts as any),
+      catalogUpdatedAt: getCatalogUpdatedAt(),
+    };
+
+    res.json({ products: filtered, meta, count: filtered.length });
+  })();
 });
 
 app.get("/api/meta", (_req, res) => {
@@ -93,6 +202,93 @@ app.get("/api/meta", (_req, res) => {
     ...meta,
     catalogUpdatedAt: getCatalogUpdatedAt(),
   });
+});
+
+// Used listings API
+app.post("/api/used-listings", async (req, res) => {
+  try {
+    const user = await requireAuth(req);
+    const input = CreateUsedListingSchema.parse(req.body);
+    const listing = await createDraftUsedListing({
+      ownerId: user.id,
+      input,
+    });
+    res.json({ listing });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed";
+    res.status(msg === "Unauthorized" ? 401 : 400).json({ error: msg });
+  }
+});
+
+app.get("/api/used-listings/:id", async (req, res) => {
+  try {
+    const id = String(req.params.id || "");
+    const listing = await getUsedListingById(id);
+    if (!listing) return res.status(404).json({ error: "Not found" });
+    // Public only if published; owner can view drafts
+    if (listing.status !== "published") {
+      const user = await requireAuth(req).catch(() => null);
+      if (!user || user.id !== listing.owner_id) {
+        return res.status(404).json({ error: "Not found" });
+      }
+    }
+    res.json({ listing });
+  } catch (err) {
+    res.status(400).json({ error: err instanceof Error ? err.message : "Failed" });
+  }
+});
+
+app.post("/api/used-listings/:id/checkout", async (req, res) => {
+  try {
+    const user = await requireAuth(req);
+    const id = String(req.params.id || "");
+    const listing = await getUsedListingById(id);
+    if (!listing || listing.owner_id !== user.id) {
+      return res.status(404).json({ error: "Not found" });
+    }
+    if (listing.status !== "draft") {
+      return res.status(409).json({ error: "Listing is not in draft status" });
+    }
+
+    const fee = usedListingFeeCents();
+    const currency = String(listing.currency || "USD").toLowerCase();
+
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      payment_method_types: ["card"],
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency,
+            unit_amount: fee,
+            product_data: {
+              name: "Used downpipe listing fee",
+            },
+          },
+        },
+      ],
+      metadata: {
+        listing_id: id,
+        owner_id: user.id,
+      },
+      success_url: `${siteUrl()}/sell?success=1&listing=${id}`,
+      cancel_url: `${siteUrl()}/sell?canceled=1&listing=${id}`,
+    });
+
+    await ensurePaymentRow({
+      listingId: id,
+      ownerId: user.id,
+      sessionId: session.id,
+      amountCents: fee,
+      currency: currency.toUpperCase(),
+    });
+
+    return res.json({ checkoutUrl: session.url });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed";
+    res.status(msg === "Unauthorized" ? 401 : 400).json({ error: msg });
+  }
 });
 
 let refreshInProgress = false;

@@ -4,7 +4,8 @@ export type ProductSource =
   | "ind"
   | "arm"
   | "novaracing"
-  | "turbobrothers";
+  | "turbobrothers"
+  | "used";
 
 export interface Product {
   id: string;
