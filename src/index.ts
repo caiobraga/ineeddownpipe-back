@@ -155,10 +155,24 @@ app.get("/api/health", (_req, res) => {
   });
 });
 
+function authUnavailableResponse() {
+  const cfg = authConfigStatus();
+  const missing: string[] = [];
+  if (!cfg.supabase) {
+    missing.push("SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY");
+  }
+  if (!cfg.jwt) missing.push("JWT_SECRET");
+  return {
+    error: "Auth not configured",
+    missing,
+    hint: "Set these on the backend ECS task (GitHub repo Variables/Secrets) and redeploy.",
+  };
+}
+
 // Auth (JWT + Resend — same pattern as ineedcarbonbuckets)
 app.post("/api/auth/register", async (req, res) => {
   if (!isAuthConfigured()) {
-    return res.status(503).json({ error: "Auth not configured" });
+    return res.status(503).json(authUnavailableResponse());
   }
   try {
     const { email, password, firstName, lastName } = req.body ?? {};
@@ -181,7 +195,7 @@ app.post("/api/auth/register", async (req, res) => {
 
 app.post("/api/auth/login", async (req, res) => {
   if (!isAuthConfigured()) {
-    return res.status(503).json({ error: "Auth not configured" });
+    return res.status(503).json(authUnavailableResponse());
   }
   try {
     const { email, password } = req.body ?? {};
@@ -202,7 +216,7 @@ app.post("/api/auth/login", async (req, res) => {
 
 app.get("/api/auth/me", async (req, res) => {
   if (!isAuthConfigured()) {
-    return res.status(503).json({ error: "Auth not configured" });
+    return res.status(503).json(authUnavailableResponse());
   }
   try {
     const user = await requireAuthUser(req.headers.authorization);
