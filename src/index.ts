@@ -20,10 +20,17 @@ import {
   markRefreshCompleted,
 } from "./refresh-policy.js";
 import seedProducts from "./data/seed.json" with { type: "json" };
+import { isSupabaseConfigured } from "./supabase.js";
 import {
-  isSupabaseConfigured,
-  requireSupabaseUser,
-} from "./supabase.js";
+  confirmPasswordReset,
+  isAuthConfigured,
+  loginUser,
+  registerUser,
+  requestPasswordReset,
+  requireAuthUser,
+  resendVerificationEmail,
+  verifyEmailToken,
+} from "./auth.js";
 import {
   getStripe,
   isStripeConfigured,
@@ -121,15 +128,14 @@ app.post(
 app.use(express.json());
 
 function isListingsConfigured(): boolean {
-  return isSupabaseConfigured() && isStripeConfigured();
+  return (
+    isSupabaseConfigured() && isAuthConfigured() && isStripeConfigured()
+  );
 }
 
 async function requireAuth(req: Request) {
-  if (!isSupabaseConfigured()) throw new Error("Listings not configured");
-  const auth = req.headers.authorization;
-  if (!auth?.startsWith("Bearer ")) throw new Error("Unauthorized");
-  const token = auth.slice("Bearer ".length).trim();
-  return await requireSupabaseUser(token);
+  if (!isAuthConfigured()) throw new Error("Listings not configured");
+  return await requireAuthUser(req.headers.authorization);
 }
 
 function getProductsList() {
@@ -142,7 +148,137 @@ app.get("/api/health", (_req, res) => {
   res.json({
     ok: true,
     listings: isListingsConfigured(),
+    auth: isAuthConfigured(),
   });
+});
+
+// Auth (JWT + Resend — same pattern as ineedcarbonbuckets)
+app.post("/api/auth/register", async (req, res) => {
+  if (!isAuthConfigured()) {
+    return res.status(503).json({ error: "Auth not configured" });
+  }
+  try {
+    const { email, password, firstName, lastName } = req.body ?? {};
+    if (!email || !password) {
+      return res.status(400).json({ error: "Email and password are required" });
+    }
+    const result = await registerUser({
+      email: String(email),
+      password: String(password),
+      firstName: firstName ? String(firstName) : undefined,
+      lastName: lastName ? String(lastName) : undefined,
+    });
+    res.status(201).json(result);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Registration failed";
+    const status = msg === "User already exists" ? 409 : 400;
+    res.status(status).json({ error: msg });
+  }
+});
+
+app.post("/api/auth/login", async (req, res) => {
+  if (!isAuthConfigured()) {
+    return res.status(503).json({ error: "Auth not configured" });
+  }
+  try {
+    const { email, password } = req.body ?? {};
+    if (!email || !password) {
+      return res.status(400).json({ error: "Email and password are required" });
+    }
+    const result = await loginUser({
+      email: String(email),
+      password: String(password),
+    });
+    res.json(result);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Login failed";
+    res.status(msg === "Invalid credentials" ? 401 : 400).json({ error: msg });
+  }
+});
+
+app.get("/api/auth/me", async (req, res) => {
+  if (!isAuthConfigured()) {
+    return res.status(503).json({ error: "Auth not configured" });
+  }
+  try {
+    const user = await requireAuthUser(req.headers.authorization);
+    res.json({ user });
+  } catch {
+    res.status(401).json({ error: "Unauthorized" });
+  }
+});
+
+app.post("/api/auth/verify-email", async (req, res) => {
+  if (!isAuthConfigured()) {
+    return res.status(503).json({ error: "Auth not configured" });
+  }
+  try {
+    const token = String(req.body?.token || "");
+    if (!token) return res.status(400).json({ error: "Token is required" });
+    const user = await verifyEmailToken(token);
+    res.json({ user, message: "Email verified" });
+  } catch (err) {
+    res.status(400).json({
+      error: err instanceof Error ? err.message : "Verification failed",
+    });
+  }
+});
+
+app.post("/api/auth/resend-verification", async (req, res) => {
+  if (!isAuthConfigured()) {
+    return res.status(503).json({ error: "Auth not configured" });
+  }
+  try {
+    const email = String(req.body?.email || "");
+    if (!email) return res.status(400).json({ error: "Email is required" });
+    await resendVerificationEmail(email);
+    res.json({
+      message:
+        "If the email exists and is not verified, a verification link has been sent",
+    });
+  } catch (err) {
+    res.status(500).json({
+      error: err instanceof Error ? err.message : "Failed to send email",
+    });
+  }
+});
+
+app.post("/api/auth/request-password-reset", async (req, res) => {
+  if (!isAuthConfigured()) {
+    return res.status(503).json({ error: "Auth not configured" });
+  }
+  try {
+    const email = String(req.body?.email || "");
+    if (!email) return res.status(400).json({ error: "Email is required" });
+    await requestPasswordReset(email);
+    res.json({
+      message:
+        "If the email exists, a password reset link has been sent",
+    });
+  } catch (err) {
+    res.status(500).json({
+      error: err instanceof Error ? err.message : "Failed to send email",
+    });
+  }
+});
+
+app.post("/api/auth/confirm-password-reset", async (req, res) => {
+  if (!isAuthConfigured()) {
+    return res.status(503).json({ error: "Auth not configured" });
+  }
+  try {
+    const token = String(req.body?.token || "");
+    const newPassword = String(req.body?.newPassword || "");
+    if (!token || !newPassword) {
+      return res.status(400).json({ error: "Token and new password are required" });
+    }
+    await confirmPasswordReset({ token, newPassword });
+    res.json({ message: "Password reset successful" });
+  } catch (err) {
+    res.status(400).json({
+      error: err instanceof Error ? err.message : "Password reset failed",
+    });
+  }
 });
 
 app.get("/api/products", (req, res) => {
@@ -250,7 +386,7 @@ app.post("/api/used-listings", async (req, res) => {
 });
 
 app.get("/api/used-listings/:id", async (req, res) => {
-  if (!isSupabaseConfigured()) {
+  if (!isListingsConfigured()) {
     return res.status(503).json({ error: "Used listings not configured" });
   }
   try {

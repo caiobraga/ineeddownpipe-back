@@ -21,11 +21,3 @@ export function getSupabaseAdmin(): SupabaseClient {
   }
   return adminClient;
 }
-
-export async function requireSupabaseUser(accessToken: string) {
-  const { data, error } = await getSupabaseAdmin().auth.getUser(accessToken);
-  if (error || !data.user) {
-    throw new Error("Unauthorized");
-  }
-  return data.user;
-}
