@@ -20,8 +20,17 @@ import {
   markRefreshCompleted,
 } from "./refresh-policy.js";
 import seedProducts from "./data/seed.json" with { type: "json" };
-import { requireSupabaseUser } from "./supabase.js";
-import { stripe, stripeWebhookSecret, usedListingFeeCents, siteUrl } from "./stripe.js";
+import {
+  isSupabaseConfigured,
+  requireSupabaseUser,
+} from "./supabase.js";
+import {
+  getStripe,
+  isStripeConfigured,
+  stripeWebhookSecret,
+  usedListingFeeCents,
+  siteUrl,
+} from "./stripe.js";
 import {
   CreateUsedListingSchema,
   createDraftUsedListing,
@@ -68,7 +77,10 @@ app.post(
 
     let event;
     try {
-      event = stripe.webhooks.constructEvent(
+      if (!isStripeConfigured()) {
+        return res.status(503).send("Stripe is not configured");
+      }
+      event = getStripe().webhooks.constructEvent(
         req.body,
         sig,
         stripeWebhookSecret()
@@ -108,7 +120,12 @@ app.post(
 
 app.use(express.json());
 
+function isListingsConfigured(): boolean {
+  return isSupabaseConfigured() && isStripeConfigured();
+}
+
 async function requireAuth(req: Request) {
+  if (!isSupabaseConfigured()) throw new Error("Listings not configured");
   const auth = req.headers.authorization;
   if (!auth?.startsWith("Bearer ")) throw new Error("Unauthorized");
   const token = auth.slice("Bearer ".length).trim();
@@ -122,7 +139,10 @@ function getProductsList() {
 }
 
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true });
+  res.json({
+    ok: true,
+    listings: isListingsConfigured(),
+  });
 });
 
 app.get("/api/products", (req, res) => {
@@ -206,6 +226,9 @@ app.get("/api/meta", (_req, res) => {
 
 // Used listings API
 app.post("/api/used-listings", async (req, res) => {
+  if (!isListingsConfigured()) {
+    return res.status(503).json({ error: "Used listings not configured" });
+  }
   try {
     const user = await requireAuth(req);
     const input = CreateUsedListingSchema.parse(req.body);
@@ -216,11 +239,20 @@ app.post("/api/used-listings", async (req, res) => {
     res.json({ listing });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed";
-    res.status(msg === "Unauthorized" ? 401 : 400).json({ error: msg });
+    const status =
+      msg === "Unauthorized"
+        ? 401
+        : msg === "Listings not configured"
+          ? 503
+          : 400;
+    res.status(status).json({ error: msg });
   }
 });
 
 app.get("/api/used-listings/:id", async (req, res) => {
+  if (!isSupabaseConfigured()) {
+    return res.status(503).json({ error: "Used listings not configured" });
+  }
   try {
     const id = String(req.params.id || "");
     const listing = await getUsedListingById(id);
@@ -239,6 +271,9 @@ app.get("/api/used-listings/:id", async (req, res) => {
 });
 
 app.post("/api/used-listings/:id/checkout", async (req, res) => {
+  if (!isListingsConfigured()) {
+    return res.status(503).json({ error: "Used listings not configured" });
+  }
   try {
     const user = await requireAuth(req);
     const id = String(req.params.id || "");
@@ -253,7 +288,7 @@ app.post("/api/used-listings/:id/checkout", async (req, res) => {
     const fee = usedListingFeeCents();
     const currency = String(listing.currency || "USD").toLowerCase();
 
-    const session = await stripe.checkout.sessions.create({
+    const session = await getStripe().checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],
       line_items: [

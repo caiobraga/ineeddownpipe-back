@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { supabaseAdmin } from "./supabase.js";
+import { getSupabaseAdmin } from "./supabase.js";
 
 export const CreateUsedListingSchema = z.object({
   title: z.string().min(8).max(180),
@@ -40,7 +40,7 @@ export async function createDraftUsedListing(params: {
     images: input.images ?? [],
   };
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await getSupabaseAdmin()
     .from("used_listings")
     .insert(row)
     .select("*")
@@ -50,7 +50,7 @@ export async function createDraftUsedListing(params: {
 }
 
 export async function getUsedListingById(id: string) {
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await getSupabaseAdmin()
     .from("used_listings")
     .select("*")
     .eq("id", id)
@@ -60,7 +60,7 @@ export async function getUsedListingById(id: string) {
 }
 
 export async function listPublishedUsedListings(limit = 200) {
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await getSupabaseAdmin()
     .from("used_listings")
     .select("*")
     .eq("status", "published")
@@ -78,7 +78,7 @@ export async function ensurePaymentRow(params: {
   currency: string;
 }) {
   const { listingId, ownerId, sessionId, amountCents, currency } = params;
-  const { error } = await supabaseAdmin.from("listing_payments").insert({
+  const { error } = await getSupabaseAdmin().from("listing_payments").insert({
     listing_id: listingId,
     owner_id: ownerId,
     stripe_checkout_session_id: sessionId,
@@ -94,7 +94,7 @@ export async function markListingPaidAndPublish(params: {
   paymentIntentId?: string | null;
 }) {
   const { sessionId, paymentIntentId } = params;
-  const { data: payment, error: paymentErr } = await supabaseAdmin
+  const { data: payment, error: paymentErr } = await getSupabaseAdmin()
     .from("listing_payments")
     .select("*")
     .eq("stripe_checkout_session_id", sessionId)
@@ -104,7 +104,7 @@ export async function markListingPaidAndPublish(params: {
 
   if (payment.status === "paid") return { listingId: payment.listing_id };
 
-  const { error: updPayErr } = await supabaseAdmin
+  const { error: updPayErr } = await getSupabaseAdmin()
     .from("listing_payments")
     .update({
       status: "paid",
@@ -115,7 +115,7 @@ export async function markListingPaidAndPublish(params: {
   if (updPayErr) throw new Error(updPayErr.message);
 
   if (payment.listing_id) {
-    const { error: updListErr } = await supabaseAdmin
+    const { error: updListErr } = await getSupabaseAdmin()
       .from("used_listings")
       .update({
         status: "published",
