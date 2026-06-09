@@ -25,6 +25,7 @@ export function inferBrandFromTitle(title: string): string {
     "Supersprint",
     "Active Autowerke",
     "VRSF",
+    "VR Speed Factory",
     "CTS Turbo",
     "ARM Motorsports",
     "Pure Turbos",
@@ -34,6 +35,11 @@ export function inferBrandFromTitle(title: string): string {
     "Armytrix",
     "Nova Racing",
     "Turbo Brothers",
+    "EuroSport Tuning",
+    "AFE",
+    "Milltek",
+    "AWE Tuning",
+    "COBB",
   ];
   for (const b of brands) {
     if (title.toLowerCase().includes(b.toLowerCase())) return b;

@@ -5,6 +5,8 @@ export type ProductSource =
   | "arm"
   | "novaracing"
   | "turbobrothers"
+  | "eurosport"
+  | "vrsf"
   | "used";
 
 export interface Product {

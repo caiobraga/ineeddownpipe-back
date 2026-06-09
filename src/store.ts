@@ -18,6 +18,8 @@ const BASE_URLS: Partial<Record<Product["source"], string>> = {
   arm: "https://armmotorsports.com",
   novaracing: "https://www.novaracing.com.br",
   turbobrothers: "https://www.turbobrothers.com.br",
+  eurosport: "https://eurosporttuning.com",
+  vrsf: "https://www.vr-speed.com",
 };
 
 export function normalizeProduct(p: Product): Product {
@@ -46,7 +48,6 @@ const REMOVED_SOURCES = new Set([
   "turner",
   "maperformance",
   "activeautowerke",
-  "vrsf",
   "erw",
   "r44performance",
 ]);
