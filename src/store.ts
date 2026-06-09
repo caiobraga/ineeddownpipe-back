@@ -76,6 +76,35 @@ export function saveProducts(products: Product[]) {
   );
 }
 
+/** Retailer names — titles often use the part brand (VRSF, CTS), not the store name. */
+const SOURCE_SEARCH_ALIASES: Partial<Record<Product["source"], string[]>> = {
+  bimmerworld: ["bimmerworld", "bimmer world"],
+  ind: ["ind distribution", "ind-distribution"],
+  arm: ["arm motorsports"],
+  novaracing: ["nova racing"],
+  turbobrothers: ["turbo brothers"],
+  eurosport: ["eurosport", "euro sport", "eurosport tuning", "eurosporttuning"],
+  vrsf: ["vrsf", "vr speed", "vr-speed", "vr speed factory"],
+  amazon: ["amazon"],
+  used: ["used", "private seller"],
+};
+
+function sourceMatchesSearch(source: Product["source"], q: string): boolean {
+  const normalized = q.replace(/\s+/g, " ").trim();
+  const compact = normalized.replace(/\s/g, "");
+  if (source.replace(/_/g, "").includes(compact) || compact.includes(source)) {
+    return true;
+  }
+  const aliases = SOURCE_SEARCH_ALIASES[source];
+  if (!aliases) return false;
+  return aliases.some(
+    (alias) =>
+      normalized.includes(alias) ||
+      alias.includes(normalized) ||
+      alias.replace(/\s/g, "").includes(compact)
+  );
+}
+
 function matchesSearch(product: Product, search: string): boolean {
   const q = search.toLowerCase();
   const fitment = [
@@ -87,7 +116,11 @@ function matchesSearch(product: Product, search: string): boolean {
     product.brand.toLowerCase().includes(q) ||
     product.model.toLowerCase().includes(q) ||
     fitment.toLowerCase().includes(q) ||
-    (product.partNumber?.toLowerCase().includes(q) ?? false)
+    (product.partNumber?.toLowerCase().includes(q) ?? false) ||
+    sourceMatchesSearch(product.source, q) ||
+    (product.url.toLowerCase().includes(q) &&
+      !q.includes("http") &&
+      q.length >= 4)
   );
 }
 
