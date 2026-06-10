@@ -7,6 +7,7 @@ export type ProductSource =
   | "turbobrothers"
   | "eurosport"
   | "vrsf"
+  | "trucrane"
   | "used";
 
 export interface Product {

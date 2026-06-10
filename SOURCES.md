@@ -12,6 +12,7 @@ Research summary for **iNeedDownpipe** — ranked for catalog quality and scrape
 | 4b | [Turbo Brothers](https://www.turbobrothers.com.br/downpipe) | Brazilian BMW downpipes (BRL); Loja Integrada | HTTP fetch |
 | 5 | [EuroSport Tuning](https://eurosporttuning.com/exhaust/downpipe/) | BigCommerce downpipe category; BMW/MINI filtered | HTTP fetch |
 | 6 | [VRSF](https://www.vr-speed.com/) | WooCommerce Store API (`/wp-json/wc/store/v1/products`); exhaust category + search | HTTP fetch |
+| 7 | [TruCrane Motorsports](https://trucranemotorsports.com/collections/tcm) | Shopify TCM + exhaust collections (`products.json`, HTML fallback); BMW/MINI downpipes | HTTP fetch |
 
 ### Skipped (Cloudflare challenge / bot block)
 

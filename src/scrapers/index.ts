@@ -7,6 +7,7 @@ import { scrapeNovaRacing } from "./novaracing.js";
 import { scrapeTurboBrothers } from "./turbobrothers.js";
 import { scrapeEurosport } from "./eurosport.js";
 import { scrapeVrsf } from "./vrsf.js";
+import { scrapeTrucrane } from "./trucrane.js";
 import { launchBrowser, newContext } from "./browser.js";
 import { passesDownpipeFilter } from "./utils.js";
 import { loadProducts, saveProducts } from "../store.js";
@@ -54,6 +55,7 @@ const SCRAPERS: ScraperJob[] = [
   { source: "turbobrothers", needsBrowser: false, run: scrapeTurboBrothers },
   { source: "eurosport", needsBrowser: false, run: scrapeEurosport },
   { source: "vrsf", needsBrowser: false, run: scrapeVrsf },
+  { source: "trucrane", needsBrowser: false, run: scrapeTrucrane },
   ...(process.env.SKIP_AMAZON_SCRAPE === "true" ||
   process.env.SKIP_AMAZON_SCRAPE === "1"
     ? []

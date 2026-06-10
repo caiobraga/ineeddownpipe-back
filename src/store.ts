@@ -20,6 +20,7 @@ const BASE_URLS: Partial<Record<Product["source"], string>> = {
   turbobrothers: "https://www.turbobrothers.com.br",
   eurosport: "https://eurosporttuning.com",
   vrsf: "https://www.vr-speed.com",
+  trucrane: "https://trucranemotorsports.com",
 };
 
 export function normalizeProduct(p: Product): Product {
@@ -85,6 +86,7 @@ const SOURCE_SEARCH_ALIASES: Partial<Record<Product["source"], string[]>> = {
   turbobrothers: ["turbo brothers"],
   eurosport: ["eurosport", "euro sport", "eurosport tuning", "eurosporttuning"],
   vrsf: ["vrsf", "vr speed", "vr-speed", "vr speed factory"],
+  trucrane: ["trucrane", "tru crane", "trucranemotorsports", "tru crane motorsports"],
   amazon: ["amazon"],
   used: ["used", "private seller"],
 };
